@@ -9,7 +9,7 @@ def main():
     parser.add_argument(
         "--model_path",
         type=str,
-        default="Qwen/Qwen2.5-7B-Instruct-1M",
+        default="Qwen/Qwen2.5-7B-Instruct",  # Non-1M context version for radix attention
     )
     parser.add_argument(
         "--output_file",
@@ -24,7 +24,7 @@ def main():
     # TODO: initialize sglang egnine here
     # you may want to explore different args we can pass here to make the inference faster
     # e.g. dp_size, mem_fraction_static
-    llm = sgl.Engine(model_path=model_path, dp_size=2, mem_fraction_static=0.9)
+    llm = sgl.Engine(model_path=model_path, dp_size=2, mem_fraction_static=0.9, schedule_policy='lpm', disable_radix_cache=False, radix_eviction_policy="lru")
     prompts = []
 
     for i in dataset:
