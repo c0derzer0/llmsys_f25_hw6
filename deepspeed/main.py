@@ -20,6 +20,7 @@ from transformers import (
 import deepspeed
 from deepspeed.ops.adam import DeepSpeedCPUAdam, FusedAdam
 from deepspeed import get_accelerator
+import wandb
 
 from dschat.utils.data.data_utils import create_prompt_dataset
 from dschat.utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, get_optimizer_grouped_parameters, save_zero_three_model, load_hf_tokenizer
@@ -222,6 +223,13 @@ def main():
 
     args.global_rank = torch.distributed.get_rank()
 
+    # Initialize Weights & Biases on rank 0 only
+    if args.global_rank == 0:
+        wandb.init(
+            project="llmsys_hw6_deepspeed",
+            config=vars(args),
+        )
+
     ds_config = get_train_ds_config(offload=args.offload,
                                     dtype=args.dtype,
                                     stage=args.zero_stage,
@@ -351,6 +359,15 @@ def main():
     perplexity, eval_loss = evaluation(model, eval_dataloader)
     print_rank_0(f"ppl: {perplexity}, loss: {eval_loss}", args.global_rank)
 
+    if args.global_rank == 0:
+        wandb.log(
+            {
+                "eval/perplexity": perplexity,
+                "eval/loss": eval_loss,
+                "epoch": 0,
+            }
+        )
+
     for epoch in range(args.num_train_epochs):
         print_rank_0(
             f"Beginning of Epoch {epoch+1}/{args.num_train_epochs}, Total Micro Batches {len(train_dataloader)}",
@@ -366,6 +383,17 @@ def main():
                 print(
                     f"Epoch: {epoch}, Step: {step}, Rank: {torch.distributed.get_rank()}, loss = {loss}"
                 )
+
+            # Log training loss periodically on rank 0
+            if args.global_rank == 0 and step % 10 == 0:
+                wandb.log(
+                    {
+                        "train/loss": loss.item(),
+                        "train/epoch": epoch + 1,
+                        "train/step": step,
+                    }
+                )
+
             model.backward(loss)
             model.step()
             end = time.time()
@@ -379,6 +407,15 @@ def main():
             args.global_rank)
         perplexity, eval_loss = evaluation(model, eval_dataloader)
         print_rank_0(f"ppl: {perplexity}, loss: {eval_loss}", args.global_rank)
+
+        if args.global_rank == 0:
+            wandb.log(
+                {
+                    "eval/perplexity": perplexity,
+                    "eval/loss": eval_loss,
+                    "epoch": epoch + 1,
+                }
+            )
         model.tput_timer.update_epoch_count()
 
     # Uncomment the following if you want to save your model
