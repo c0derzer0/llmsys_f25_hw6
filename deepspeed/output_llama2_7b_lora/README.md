@@ -12,8 +12,8 @@ I explored several combinations of **max sequence length**, **LoRA rank**, and *
 - **Per-device train batch size**: 1, 2, 4
 
 For each configuration, I:
-- Monitored **GPU memory usage and utilization** using `nvidia-smi` (logged to CSV and summarized with a small analysis script)
-- Tracked **training/evaluation loss and perplexity** with Weights & Biases (W&B), logging:
+- Monitored **GPU memory usage and utilization** using `nvidia-smi` ans `wandb`
+- Tracked **training/evaluation loss and perplexity and system usage** with Weights & Biases (W&B), logging:
   - `train/loss` periodically during the training loop
   - `eval/loss` and `eval/perplexity` at the initial evaluation and after each epoch
 
@@ -38,3 +38,4 @@ Using the final configuration, I observed the following evaluation results (from
 These values show a consistent improvement in both loss and perplexity across epochs.
 
 ### Memory Usage Evidence
+Added mem util graph over time from wandb in `.deepspeed/output_llama2_7b_lora/images`
